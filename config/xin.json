@@ -1,0 +1,58 @@
+[
+    {
+      "position": [-23.0, -17.7],
+      "shape": "triangle",
+      "angle": 60
+    },
+    {
+      "position": [69.0, -18.4],
+      "shape": "triangle",
+      "angle": 60
+    },
+    {
+      "position": [-9.2, 27.8],
+      "shape": "triangle",
+      "angle": 0
+    },
+    {
+      "position": [52.4, 27.1],
+      "shape": "triangle",
+      "angle": 0
+    },
+    {
+      "position": [21.7, 81.5],
+      "shape": "triangle",
+      "angle": 0
+    },
+    {
+      "position": [45.1, -22.7],
+      "shape": "diamond",
+      "angle": 150
+    },
+    {
+      "position": [-0.5, -22.4],
+      "shape": "diamond",
+      "angle": 30
+    },
+    {
+      "position": [61.2, 4.6],
+      "shape": "diamond",
+      "angle": 150
+    },
+    {
+      "position": [-16.3, 4.6],
+      "shape": "diamond",
+      "angle": 30
+    },
+    {
+      "position": [21.8, 45.2],
+      "shape": "hexagon",
+      "angle": 0
+    },
+    {
+      "position": [23.0, 4.3],
+      "shape": "trapezoid",
+      "angle": 180
+    }
+  ]
+  
