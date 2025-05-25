@@ -37,6 +37,9 @@ class ImgDetector:
 
     def detect_shapes(self, frame):
         # self.image = cv2.imread(self.img_path)
+        self.width = frame.shape[1]
+        self.height = frame.shape[0]
+        self.img_center = (self.width // 2, self.height // 2)
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         hsv = cv2.GaussianBlur(hsv, (3, 3), 0)
 
@@ -185,9 +188,11 @@ class ImgDetector:
 
             if shape != 'unknown':
                 end_cx, end_cy = self.transform(cx, cy)
+                distance = np.linalg.norm(np.array([cx, cy]) - np.array(self.img_center))
                 results.append({
                     "shape": shape,
                     "center": (int(cx), int(cy)),
+                    "distance": round(distance, 1),
                     "end_center":(round(end_cx, 4), round(end_cy, 4)),
                     "angle": round(angle, 1),
                     "contour": cnt,

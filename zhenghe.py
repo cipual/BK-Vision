@@ -568,6 +568,7 @@ class ShapeDesignerMainWindow(QMainWindow):
             self.plc_data_display.append("[提示] 未检测到相机，执行示例图片检测！")
             
         results = self.detector.detect_shapes(frame)
+        results.sort(key=lambda x: x["distance"])
         format_results = []
         image = self.detector.imshow(frame, results, save=False, show=False)
 
@@ -583,7 +584,7 @@ class ShapeDesignerMainWindow(QMainWindow):
         for res in results:
             format_results.append({
                 "shape": res['shape'],
-                "center":res['end_center'],
+                "center": res['end_center'],
                 "angle": res['angle'],
             })
         return format_results
