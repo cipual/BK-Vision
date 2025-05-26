@@ -14,6 +14,7 @@ from PyQt5.QtCore import Qt, QPointF, QRectF, QSize, pyqtSignal, QThread
 from driver.HKcamera import Camera
 from task import ImgDetector
 from utils.utils import match, count_shapes, generate_vision_string, match_one
+from time import sleep
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
@@ -36,7 +37,7 @@ class ServerThread(QThread):
             self.timeout_signal.emit()
 
 class TcpImageServer:
-    def __init__(self, host='192.168.1.5', port=2000, timeout=10):
+    def __init__(self, host='192.168.100', port=2000, timeout=10):
         self.host = host
         self.port = port
         self.buffer_size = 2048
@@ -401,7 +402,7 @@ class ShapeDesignerMainWindow(QMainWindow):
         config_group = QGroupBox("TCP配置")
         config_layout = QGridLayout()
         config_layout.addWidget(QLabel("目标IP:"), 0, 0)
-        self.ip_input = QLineEdit("192.168.1.5")
+        self.ip_input = QLineEdit("192.168.1.100")
         config_layout.addWidget(self.ip_input, 0, 1)
         config_layout.addWidget(QLabel("端口:"), 1, 0)
         self.port_input = QLineEdit("2000")
@@ -563,6 +564,8 @@ class ShapeDesignerMainWindow(QMainWindow):
     def update_detection_result(self):
         if self.camera is not None:
             frame = self.camera.get_img()
+            while frame is None:
+                frame = self.camera.get_img()
         else:
             frame = cv2.imread(self.detector.img_path)
             self.plc_data_display.append("[提示] 未检测到相机，执行示例图片检测！")
@@ -610,6 +613,7 @@ class ShapeDesignerMainWindow(QMainWindow):
             }
         self.message_received.emit(f"[来自plc]: {msg}")
         if msg[:6] == "GETNUM":
+            sleep(0.5)  # 等待相机稳定
             first_scan = self.update_detection_result()
             self.shape_pair_list = match(first_scan, self.shapes_data)
             self.num_dic = count_shapes(first_scan) 
@@ -634,6 +638,7 @@ class ShapeDesignerMainWindow(QMainWindow):
                 return
 
         elif msg[:3] in [f"+{i}" for i in range(51, 55)]:
+            sleep(0.1)  # 等待相机稳定
             second_scan = self.update_detection_result()
             found_result = None
             for item in second_scan:
