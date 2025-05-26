@@ -4,7 +4,7 @@
 import cv2
 import numpy as np
 
-rgb = '#1A201C,#1E1A12,#252E2A,#1B231A'
+rgb = '#1F2D26,#3C4D46,#1C221E,#21241B'
 
 rgb = rgb.split(',')
 

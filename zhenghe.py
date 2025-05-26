@@ -15,6 +15,7 @@ from driver.HKcamera import Camera
 from task import ImgDetector
 from utils.utils import match, count_shapes, generate_vision_string, match_one
 from time import sleep
+import time
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
@@ -589,7 +590,9 @@ class ShapeDesignerMainWindow(QMainWindow):
                 "shape": res['shape'],
                 "center": res['end_center'],
                 "angle": res['angle'],
+                # "center_img": res['center'],
             })
+            # print(f"检测到图形: 中心: {res['end_center']}, 角度: {res['angle']}, 图形: {res['shape']}")
         return format_results
     
     def connect_camera(self):
@@ -628,7 +631,7 @@ class ShapeDesignerMainWindow(QMainWindow):
                 return
             shape_code = shape_map.get(shape_pair['result']['shape'], "U")  # U = 未知
             x, y = shape_pair['result']['center']
-            r = shape_pair['canvas']['angle'] - shape_pair['result']['angle']
+            r = 180 - (shape_pair['canvas']['angle'] - shape_pair['result']['angle'])
             message = f"00OK,{shape_code},x{round(x,3)},y{round(y,3)},r{round(r,3)}*"
             self.message_received.emit("[发送plc]:" + message)
             self.plc.conn.sendall(message.encode('utf-8'))
@@ -638,6 +641,13 @@ class ShapeDesignerMainWindow(QMainWindow):
                 return
 
         elif msg[:3] in [f"+{i}" for i in range(51, 55)]:
+            if not hasattr(self, '_last_msg_time'):
+                self._last_msg_time = {}
+            current_time = time.time()
+            if msg[:3] in self._last_msg_time and current_time - self._last_msg_time[msg[:3]] < 1:
+                return  # Ignore if the message is received within 1 seconds of the last one
+
+            self._last_msg_time[msg[:3]] = current_time
             sleep(0.1)  # 等待相机稳定
             second_scan = self.update_detection_result()
             found_result = None
@@ -661,7 +671,7 @@ class ShapeDesignerMainWindow(QMainWindow):
                     shape_code = shape_map.get(shape_pair['result']['shape'], "U")
                     x, y = shape_pair['result']['center']
                     X, Y = shape_pair['canvas']['center']
-                    r = shape_pair['canvas']['angle'] - shape_pair['result']['angle']
+                    r = (shape_pair['canvas']['angle'] - shape_pair['result']['angle'] + 180) *5 # plc角度需要*5
                     message = f"00OK,{shape_code},x{round(x,3)},y{round(y,3)},r{round(r,3)},X{round(X,3)},Y{round(Y,3)}*"
                     self.message_received.emit("[发送plc]:" + message)
                     self.plc.conn.sendall(message.encode('utf-8'))

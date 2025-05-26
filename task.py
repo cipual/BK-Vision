@@ -13,15 +13,23 @@ from PyQt5.QtCore import Qt, QPointF, QLineF, QRectF, QSize
 import json
 
 class ImgDetector:
-    def __init__(self, img_path='imgs/shiyan1.png', txt_path='config\waican.txt'):
+    def __init__(self, img_path='imgs/paizhao.png', txt_path='config\waican.txt'):
         self.img_path = img_path
-        self.Trans = []
-        with open(txt_path, 'r') as f:
-            for line in f:
-                parts = [float(x.strip()) for x in line.strip().split(',') if x.strip()]
-                self.Trans.append(parts)
-        self.Trans = np.array(self.Trans)  # 3x3，列主序
-        self.Trans = self.Trans.T  
+        # self.Trans = []
+        self.Trans = np.array([[-0.072726, -0.000536, 86.089027],
+                            [-0.000666, 0.072689, -79.587906],
+                            [0.000000, 0.000000, 1.000000]])
+        self.cameraMatrix = np.array([
+                        [3098.393199379014, 0, 1216.273938824572],
+                        [0, 3099.618345026281, 1074.290301250453],
+                        [0, 0, 1]]
+                        )
+        # with open(txt_path, 'r') as f:
+        #     for line in f:
+        #         parts = [float(x.strip()) for x in line.strip().split(',') if x.strip()]
+        #         self.Trans.append(parts)
+        # self.Trans = np.array(self.Trans)  # 3x3，列主序
+        # self.Trans = self.Trans.T  
 
     def compute_angle(self, pt1, pt2):
         if pt1[0] > pt2[0]:
@@ -46,7 +54,8 @@ class ImgDetector:
         color_ranges = {
             "red": ([150, 50, 40], [180, 200, 255]),
             "yellow": [(5, 80, 60), (30, 255, 255)],
-            "green": [(10, 20, 10), (90, 120, 65)],
+            "orange": [(5, 150, 60), (25, 255, 180)],
+            "green": [(35, 53, 28), (88, 94, 75)],
         }
 
         combined_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
@@ -64,7 +73,7 @@ class ImgDetector:
         results = []
         for cnt in contours:
             area = cv2.contourArea(cnt)
-            if area < 2000:
+            if area < 5000:
                 continue
 
             M = cv2.moments(cnt)
@@ -130,10 +139,9 @@ class ImgDetector:
                     base_line = [tuple(diag_points[0]), tuple(diag_points[1])]
                 else:
                     shape = "trapezoid"
+                    # 找到最长边作为基准边
                     max_len = 0
                     base_edge_tpd = None
-                    base_idx = 0
-                    
                     for i in range(len(points)):
                         pt1 = points[i]
                         pt2 = points[(i + 1) % len(points)]  # 邻接点构成边
@@ -141,22 +149,31 @@ class ImgDetector:
                         if length > max_len:
                             max_len = length
                             base_edge_tpd = [pt1, pt2]
-                            base_idx = i
-                    
+
                     angle = 360 - self.compute_angle(base_edge_tpd[0], base_edge_tpd[1])
                     base_line = [tuple(base_edge_tpd[0]), tuple(base_edge_tpd[1])]
 
-                    # === 寻找可能的“平行短边” ===
-                    # 与基准边对面的边索引，假设图形轮廓点有4~6个时成立
-                    opp_idx = (base_idx + len(points)//2) % len(points)
-                    opp_pt1 = points[opp_idx]
-                    opp_pt2 = points[(opp_idx + 1) % len(points)]
-                    midpoint_base = (base_edge_tpd[0] + base_edge_tpd[1]) / 2
-                    midpoint_opp = (opp_pt1 + opp_pt2) / 2
+                    # === 更精确地寻找“平行短边” ===
+                    # 计算每条边的长度
+                    edges = []
+                    for i in range(len(points)):
+                        pt1 = points[i]
+                        pt2 = points[(i + 1) % len(points)]
+                        length = np.linalg.norm(pt1 - pt2)
+                        edges.append((length, [pt1, pt2]))
 
-                    # 判断相对位置
-                    vec = midpoint_opp - midpoint_base
-                    if vec[0] < -50 or vec[1] > 50:  
+                    # 按长度排序，最长的为基准边，次长的为平行短边
+                    edges.sort(key=lambda x: x[0], reverse=True)
+                    base_edge_tpd = edges[0][1]
+                    parallel_edge = edges[1][1]
+
+                    # 重新计算基准边和平行边的中点
+                    midpoint_base = (base_edge_tpd[0] + base_edge_tpd[1]) / 2
+                    midpoint_parallel = (parallel_edge[0] + parallel_edge[1]) / 2
+
+                    # 判断相对位置，确保角度方向一致
+                    vec = midpoint_parallel - midpoint_base
+                    if vec[0] < 0:  # 如果平行边在基准边左侧，调整角度
                         angle = (360 - angle) % 360
 
             elif vertices == 6:
@@ -217,7 +234,8 @@ class ImgDetector:
                 pt1, pt2 = res["base_line"]
                 cv2.line(output, pt1, pt2, (0, 0, 255), 2)
         if show:
-            cv2.imshow("Result", output)
+            resized_output = cv2.resize(output, (int(self.width/2), int(self.height/2)))
+            cv2.imshow("Result", resized_output)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
         if save:
@@ -496,8 +514,10 @@ class TcpImageServer:
 
 
 if __name__ == '__main__':
-    detector = ImgDetector()
-    results = detector.detect_shapes()
-    detector.imshow(results, False, True)
+    img_path = r'imgs\20250526_221623.jpg'
+    detector = ImgDetector(img_path=img_path, txt_path='config\waican.txt')
+    image = cv2.imread(detector.img_path)
+    results = detector.detect_shapes(image)
+    detector.imshow(image, results, False, True)
     # server = TcpImageServer(detector=detector)
     # server.start_server()
