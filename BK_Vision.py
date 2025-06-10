@@ -25,7 +25,7 @@ QApplication.setFont(QFont("Microsoft YaHei", 12))
 
 # ------------------- 工具类 -----------------------
 class ImgDetector:
-    def __init__(self, img_path=r'imgs\20250527_115237.jpg', txt_path=r'config\waican.txt',
+    def __init__(self, img_path=r'imgs\paizhao.png', txt_path=r'config\waican.txt',
                  yolo_model_path = r"weights\best.pt",
                  sam_checkpoint=r"weights\sam_vit_b_01ec64.pth", sam_type="vit_b", device="cuda:0"):
         self.img_path = img_path
