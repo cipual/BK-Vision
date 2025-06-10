@@ -1,6 +1,8 @@
 from collections import Counter
 import socket
 import psutil
+import cv2
+import numpy as np
 
 def count_shapes(results):
     shape_counter = Counter()
@@ -72,6 +74,78 @@ def generate_vision_string(shape_counter):
     # 按照通信协议格式拼接字符串
     result_str = f"00OK,S{triangle},P{diamond},L{hexagon},T{trapezoid}*"
     return result_str
+
+def get_local_ips():
+    ip_list = set()
+
+    # 使用 psutil 获取所有网卡的IP
+    for iface, snics in psutil.net_if_addrs().items():
+        for snic in snics:
+            if snic.family == socket.AF_INET and not snic.address.startswith("127."):
+                ip_list.add(snic.address)
+
+    return sorted(ip_list) if ip_list else ["127.0.0.1"]
+
+def detect_and_segment(frame, predictor, yolo_model):
+    """
+    使用YOLO检测图像中的目标，并使用SAM对检测到的目标进行分割。
+    仅处理类别为“trapezoid”的目标。
+    """
+    H, W = frame.shape[:2]
+
+    results = yolo_model(frame, imgsz=512)
+    final_mask = np.zeros((H, W), dtype=np.uint8)
+
+    for result in results:
+        if result.masks is not None and len(result.masks.data) > 0:
+            masks = result.masks.data.cpu().numpy()
+            boxes = result.boxes.xyxy.cpu().numpy()
+            # 获取类别索引和标签名称
+            class_ids = result.boxes.cls.cpu().numpy().astype(int)  # [N] 每个框的类别ID
+            class_names = [yolo_model.names[cid] for cid in class_ids]  # [N] 对应的类别名
+
+            for i, (cid, cname) in enumerate(zip(class_ids, class_names)):
+                if cname != 'trapezoid': 
+                    continue
+                # 预处理mask和框
+                mask = (masks[i] * 255).astype(np.uint8)
+                mask_resized = cv2.resize(mask, (W, H), interpolation=cv2.INTER_NEAREST)
+                _, mask_bin = cv2.threshold(mask_resized, 127, 255, cv2.THRESH_BINARY)
+
+                x1, y1, x2, y2 = boxes[i].astype(int)
+                roi_image = frame[y1:y2, x1:x2]
+                roi_mask = mask_bin[y1:y2, x1:x2]
+
+                # 计算掩码质心作为SAM提示点
+                M = cv2.moments(roi_mask)
+                if M["m00"] != 0:
+                    cx = int(M["m10"] / M["m00"])
+                    cy = int(M["m01"] / M["m00"])
+                else:
+                    cx = (x2 - x1) // 2
+                    cy = (y2 - y1) // 2
+                    print(f"[警告] 第{i}个目标掩码为空，使用中心点代替")
+
+                predictor.set_image(cv2.cvtColor(roi_image, cv2.COLOR_BGR2RGB))
+                input_point = np.array([[cx, cy]])
+                input_label = np.array([1])
+                masks_sam, _, _ = predictor.predict(point_coords=input_point,
+                                                    point_labels=input_label,
+                                                    multimask_output=False)
+
+                # 若 SAM 返回空掩码，跳过
+                if masks_sam[0].sum() == 0:
+                    print(f"[跳过] SAM未成功分割第{i}个目标，point: {cx},{cy}")
+                    continue
+
+                # SAM掩码写入原图对应位置
+                sam_mask = masks_sam[0].astype(np.uint8) * 255
+                sam_mask_full = np.zeros((H, W), dtype=np.uint8)
+                sam_mask_full[y1:y2, x1:x2] = sam_mask
+
+                # 融合
+                final_mask = cv2.bitwise_or(final_mask, sam_mask_full)
+    return final_mask
 
 if __name__ == "__main__":
 
