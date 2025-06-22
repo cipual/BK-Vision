@@ -16,7 +16,7 @@ from driver.HKcamera import Camera
 from utils.utils import match, count_shapes, generate_vision_string, match_one, get_local_ips, detect_and_segment
 from time import sleep
 import time
-sam_path = r"..\..\segment-anything\ "
+sam_path = r"..\..\segment-anything\ " # 更改成你的 SAM 模型路径
 if sam_path not in sys.path:
     sys.path.append(sam_path)
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
