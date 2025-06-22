@@ -22,27 +22,27 @@
 
      ```bash
    python BK_Vision.py
-     ```
+   ```
 
 
 ## Overview
 
-![GUI](.\doc\GUI.png)
+![GUI](doc/GUI.png)
 
 图形配置的基本功能包括：
 
 ①画布坐标系到世界坐标系的变换：更改世界坐标原点在画布的位置
 
-![set_origin](doc\set_origin.gif)
+![set_origin](doc/set_origin.gif)
 
 ②人机交互逻辑：双击添加、左键拖动、右键旋转
 
-![add_shape](doc\add_shape.gif)
+![add_shape](doc/add_shape.gif)
 
 ③常用配置的一键加载：将已有的配置文件导入画布
 
-![load_config](doc\load_config.gif)
+![load_config](doc/load_config.gif)
 
 ④导出画布配置：将当前画布的配置图形保存为.json方便使用
 
-![save_config](doc\save_config.png)
+![save_config](doc/save_config.png)
